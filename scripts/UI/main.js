@@ -45,7 +45,7 @@ $(function() {
 
 	function initializeMap() {
 
-		mapboxgl.accessToken = 'pk.eyJ1IjoicmcyOCIsImEiOiJjbGRsaXk3cXQwMjZuM3VvaGhya3N4dXN6In0.Ust9rPKtGmAMuTDCKaYIrA';
+		mapboxgl.accessToken = ''; // Set via /api/configure
 
 		map = new mapboxgl.Map({
 			container: 'map-view',
@@ -606,12 +606,15 @@ $(function() {
 	}
 	async function startDownloading() {
 
+		console.log("startDownloading called");
+		console.log("Features count:", draw.getAll().features.length);
+
 		if(draw.getAll().features.length == 0) {
 			M.toast({html: 'You need to select a region first.', displayLength: 3000})
 			return;
 		}
 
-		cancellationToken = false; 
+		cancellationToken = false;
 		requests = [];
 
 		$("#main-sidebar").hide();
@@ -628,6 +631,7 @@ $(function() {
 		var timestamp = Date.now().toString();
 
 		var allTiles = getAllGridTiles();
+		console.log("Total tiles to download:", allTiles.length);
 		updateProgress(0, allTiles.length);
 
 		var numThreads = parseInt($("#parallel-threads-box").val()) || 4;
@@ -655,16 +659,23 @@ $(function() {
 		data.append('launchLocation', launchLocation.join(","));
 		data.append('area', area_rect);
 
-		var request = await $.ajax({
-			url: "/start-download",
-			async: true,
-			timeout: 30 * 1000,
-			type: "post",
-			contentType: false,
-			processData: false,
-			data: data,
-			dataType: 'json',
-		})
+		console.log("Posting to /start-download...");
+		try {
+			var request = await $.ajax({
+				url: "/start-download",
+				async: true,
+				timeout: 30 * 1000,
+				type: "post",
+				contentType: false,
+				processData: false,
+				data: data,
+				dataType: 'json',
+			});
+			console.log("/start-download response:", request);
+		} catch(e) {
+			console.error("/start-download failed:", e);
+			return;
+		}
 
 		let i = 0;
 		var iterator = async.eachLimit(allTiles, numThreads, function(item, done) {

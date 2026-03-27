@@ -515,6 +515,13 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             print("Satellite image generated successfully")
             self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
             (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
+            # Store for world builder API
+            self.computed_size_x = size_x
+            self.computed_size_y = size_y
+            self.computed_size_z = size_z
+            self.computed_pose_x = pose_x
+            self.computed_pose_y = posey
+            self.computed_pose_z = posez
 
             # Generate SDF files for the world
             self.gen_config()

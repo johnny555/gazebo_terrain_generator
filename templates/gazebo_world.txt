@@ -42,6 +42,7 @@
       <uri>$HELIPAD$</uri>
     </include>
 
+$MODEL_INCLUDES$
 
   </world>
 </sdf>

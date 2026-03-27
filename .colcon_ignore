@@ -1,0 +1,5 @@
+# This file tells colcon to ignore this directory during build
+# The terrain_generator subdirectory contains a Python virtual environment
+# that should not be scanned by colcon
+# This entire package is not part of the ROS2 workspace build
+

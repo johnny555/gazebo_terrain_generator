@@ -235,7 +235,34 @@ class FileWriter:
 
 		
 	@staticmethod
-	def write_world_file(sdf_template,model_name,launch_lat,launch_lon,path,origin_height,helipad_exist):
+	def generate_model_includes(models):
+		"""Generate XML include blocks for placed models.
+
+		Args:
+			models (list): List of model dicts with keys: name, x, y, z, roll, pitch, yaw
+
+		Returns:
+			str: XML string of <include> blocks
+		"""
+		includes = []
+		for i, m in enumerate(models):
+			uri = m.get('uri', f'model://{m["name"]}')
+			instance_name = f'{m["name"]}_{i}'
+			# Negate yaw: UI uses screen convention (CW positive),
+			# Gazebo uses math convention (CCW positive)
+			gz_yaw = -m["yaw"]
+			include = (
+				f'    <include>\n'
+				f'      <name>{instance_name}</name>\n'
+				f'      <uri>{uri}</uri>\n'
+				f'      <pose>{m["x"]} {m["y"]} {m["z"]} {m["roll"]} {m["pitch"]} {gz_yaw}</pose>\n'
+				f'    </include>'
+			)
+			includes.append(include)
+		return '\n\n'.join(includes)
+
+	@staticmethod
+	def write_world_file(sdf_template,model_name,launch_lat,launch_lon,path,origin_height,helipad_exist,model_includes=""):
 		'''
 		Write a world file with the provided template and model details.
 
@@ -255,7 +282,8 @@ class FileWriter:
 		sdf_template = sdf_template.replace("$ORIGIN_LAT$", str(launch_lat))
 		sdf_template = sdf_template.replace("$ORIGIN_LONG$", str(launch_lon))
 		sdf_template = sdf_template.replace("$ORIGIN_ELEVATION$", str(origin_height))
-		
+		sdf_template = sdf_template.replace("$MODEL_INCLUDES$", model_includes)
+
     	# Open file
 		if helipad_exist:
 			sdf_template = sdf_template.replace("$HELIPAD$", str("model://helipad"))

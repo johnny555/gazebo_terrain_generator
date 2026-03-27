@@ -4,3 +4,14 @@ output/
 terrain_generator/
 temp/
 *.pyc
+.env
+.env.local
+.env*.local
+
+# Python
+venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+

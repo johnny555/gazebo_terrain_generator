@@ -1,136 +1,181 @@
-# Gazebo Terrain Generator  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/saiaravind19/gazebo_terrain_generator) 
+# Gazebo World Builder
 
+Visual tool for generating Gazebo simulation worlds from satellite imagery with drag-and-drop model placement.
 
+**Features:**
+- Select any region on a satellite map and generate a Gazebo terrain with heightmap and aerial texture
+- Drag and drop Gazebo models from your local model library onto the satellite view
+- Rotate models to set their orientation (yaw)
+- Generates complete SDF world files with terrain and all placed models
+- Configurable output and model library directories from the web UI
 
-A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevation and satellite data.
+## Prerequisites
 
+- **Python 3.10+**
+- **Node.js 18+** and **npm**
+- **ROS 2 Humble or later** (for Gazebo Sim integration)
+- **Gazebo Sim** (gz-sim) - tested with [Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/)
+- A **Mapbox API key** (free tier works fine)
 
-<p align="center">
-  <a href="https://www.youtube.com/embed/TsV34XBntnY?si=zK0TL7pK_RhsNW05">
-    <img src="gif/thumnail.png" alt="Project Demo" width="1050"/>
-  </a>
-</p>
+### Getting a Mapbox API Key
 
-## Features
+1. Go to [https://account.mapbox.com/auth/signup/](https://account.mapbox.com/auth/signup/)
+2. Create a free account (no credit card required for the free tier)
+3. From your [account dashboard](https://account.mapbox.com/), copy your **Default public token**
+4. You'll paste this into the app's configuration screen on first launch
 
-- **Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
-- **Configurable Spawn Location**: Change the spawn location using interactive UI marker within the region of interest
-- **Configurable Output**: Flexible output paths via environment variables for different deployment scenarios
-- **Customizable Resolution**: Adjustable tile resolution.
-- **Complete World Generation**: Generates the entire model with no hassle out of the box
+## Installation
 
-## Supported and Tested Stack
-
-- **[Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/)**
-## 🛠️ Setup Instructions
-
-### Create and Activate Virtual Environment (Recommended)
-
-It's recommended to use a virtual environment to avoid dependency conflicts:
-
-```bash
-python3 -m venv terrain_generator
-source terrain_generator/bin/activate
-```
-
-
-### Install Requirements
-
-Make sure your virtual environment is active, then install all required Python packages using:
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-You can customize where Gazebo Models and World are saved using environment variables:
+### 1. Clone into your ROS 2 workspace
 
 ```bash
-export GAZEBO_MODEL_PATH="~/Desktop/gazebo_models"
-export GAZEBO_WORLD_PATH="~/Desktop/gazebo_models/worlds"
-
+cd ~/ros2_ws/src
+git clone https://github.com/johnny555/gazebo_terrain_generator.git gazebo_world_builder
+cd gazebo_world_builder
+git checkout world-builder
 ```
 
-**Default Location**: If no environment variable is set, model and worlds files are saved to:
+### 2. Create and activate a Python virtual environment
+
+A virtual environment is **required** on most modern Linux distributions (Ubuntu 23.04+, etc.)
+due to [PEP 668](https://peps.python.org/pep-0668/) which prevents installing packages into the
+system Python. You'll get an `externally-managed-environment` error without one.
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
 ```
-Models saved in **~/gazebo_terrian_generator/output/gazebo_terrain/**
-World files in **~/gazebo_terrian_generator/output/gazebo_terrain/worlds**
+
+> **Note:** You'll need to run `source venv/bin/activate` each time you open a new terminal
+> before starting the server.
+
+### 3. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Build the frontend
+
+Requires [Node.js 18+](https://nodejs.org/) and npm.
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+### 5. (Optional) Create a `.env.local` file
+
+To avoid entering your Mapbox key every time, create a `.env.local` file in the project root:
+
+```bash
+echo "MAPBOX_API_KEY=pk.your_key_here" > .env.local
+```
+
+This file is gitignored and will be loaded automatically on server startup. If a valid key is found in `.env.local`, the configuration screen is skipped and you go straight to the home page.
+
+Supported variables:
+- `MAPBOX_API_KEY` - Your Mapbox public access token
+
+## Usage
+
+### Start the server
+
+```bash
+source venv/bin/activate   # if not already activated
+cd scripts
+python server.py
+```
+
+Open [http://localhost:5000](http://localhost:5000) in your browser.
+
+### Workflow
+
+1. **Configure** - Enter your Mapbox API key, set the output directory and model library path
+2. **Select Region** - Search for a location, draw a rectangular region on the map, set the launch pad position, choose zoom level and tile source
+3. **Generate Terrain** - Click "Generate Terrain" and wait for tile download and heightmap generation
+4. **Place Models** - In the World Builder view, select models from the toolbar and click on the map to place them. Adjust rotation (yaw) as needed.
+5. **Generate SDF** - Click "Generate World SDF" to create the final world file with all placed models
+
+### Launch in Gazebo
+
+Gazebo uses `GZ_SIM_RESOURCE_PATH` to find models referenced by `model://` URIs.
+You need to include the output directory (for the terrain model) and any model library
+directories containing placed models.
+
+After generating a world SDF, the app shows the exact commands to run. They look like:
+
+```bash
+export GZ_SIM_RESOURCE_PATH=/path/to/output/gazebo_terrain:/path/to/your/models:${GZ_SIM_RESOURCE_PATH}
+gz sim /path/to/output/gazebo_terrain/<model_name>/<model_name>.sdf
+```
+
+You can copy these directly from the World Builder UI after clicking "Generate World SDF".
+
+> **Tip:** If you're running Gazebo in a container, make sure the model directories
+> are mounted into the container and the `GZ_SIM_RESOURCE_PATH` points to the
+> container-side paths.
+
+### Model Library
+
+Point the "Model Library Directory" to any directory containing Gazebo model folders. Each model folder should have:
 
 ```
+my_model/
+  model.config    (required - XML with model name and description)
+  model.sdf       (required - SDF with geometry)
+  meshes/         (optional - .dae, .stl, or .obj mesh files)
+  thumbnails/     (optional - thumbnail images)
+```
+
+Common sources for Gazebo models:
+- [Gazebo Fuel](https://app.gazebosim.org/fuel/models) - download models and extract to your library directory
+- Your own custom models
 
 ### File Structure
 
-Generated model follow this structure:
+Generated worlds follow this structure:
 ```
-<GAZEBO_MODEL_PATH>/
-├── model_name/
-│   ├── model.sdf              # Gazebo model definition
-│   ├── model.config           # Model configuration
-│   ├── model_name.sdf         # Gazebo world file
-│   └── textures/
-│       ├── world_name_height_map.tif    # Elevation heightmap
-│       └── world_name_aerial.png        # Satellite imagery texture
-<GAZEBO_WORLD_PATH>/
-├──model_name.sdf         # Gazebo world file
-├──model_name_1.sdf       # Gazebo world file
-├──model_name_2.sdf       # Gazebo world file
-
+<output_dir>/gazebo_terrain/
+  <model_name>/
+    model.sdf              # Gazebo model definition (heightmap)
+    model.config           # Model configuration
+    <model_name>.sdf       # Gazebo world file (includes terrain + placed models)
+    textures/
+      <model_name>_height_map.tif    # Elevation heightmap
+      <model_name>_aerial.png        # Satellite imagery texture
+  worlds/
+    <model_name>.sdf       # Copy of world file
 ```
 
-## 🚀 Run Gazebo World Generator
+## Development
 
-1. Navigate to **gazebo_terrian_generator** and start the applciation.
-    ```bash
-    source terrain_generator/bin/activate
-    python scripts/server.py
-    ```
+For development with hot-reload:
 
-2. Access the Web Interface: 
-   Open your web browser and navigate to `http://localhost:8080`
+**Terminal 1 - Backend:**
+```bash
+cd scripts
+python server.py
+```
 
-3. Generate Your World:
-   - Search for any location on Earth
-   - Draw a rectangular region of interest
-   - Place launch pad marker at desired spawn location
-   - Configure settings (zoom level, map source)
-   - Click "Generate Terrain" to create your world
+**Terminal 2 - Frontend dev server:**
+```bash
+cd frontend
+npm run dev
+```
 
-4. Output Location: 
-   Generated worlds are saved to the configured path (see Environment Variables section above)
+The Vite dev server runs on `http://localhost:5173` and proxies API requests to the Flask backend on port 5000.
 
-## 🏁 Spawning Gazebo Worlds
+## Tech Stack
 
-1. **Export the gazebo model path**:
-    ```bash
-    export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:<path_to_your_gazebo_worlds>
-    ```
-
-2. **Run Gazebo with your world**:
-    ```bash
-    gz sim your_world_name/your_world_name.sdf
-    ```
-
-**Note**: Replace `<path_to_your_gazebo_worlds>` with the actual path where your worlds are saved.
-
-
-## 📋 Sample Worlds Example
-
-Test the installation with provided sample worlds:
-
-1. **Export the sample gazebo model path**:
-    ```bash
-    export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds
-    ```
-
-2. **Launch sample world**:
-    ```bash
-    gz sim prayag/prayag.sdf
-    ```
-
-## 🔑 MapBox API Key
-A free api key is being used in the repo if it gets limited then please feel free to create your own API key from official [MapBox's website](https://www.mapbox.com/) and replace it in the [`configuration file`](scripts/utils/param.py)
+- **Backend**: Python Flask
+- **Frontend**: React + Vite + Tailwind CSS
+- **Map**: Mapbox GL JS (via react-map-gl)
+- **3D Rendering**: Three.js (via @react-three/fiber)
+- **Image Processing**: OpenCV, Pillow, NumPy
+- **Geodesic Math**: geopy
 
 ## Important Disclaimer
 
@@ -138,13 +183,16 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## License
 
-This project is licensed under the **BSD 3-Clause License**.  
-See the [LICENSE](LICENSE) file for full details.  
+This project is licensed under the **BSD 3-Clause License**.
+See the [LICENSE](LICENSE) file for full details.
 
-Portions of this project are derived from **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader),  
+Portions of this project are derived from **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader),
 which is licensed under the **MIT License**. The MIT-licensed components remain under their original terms.
 
+## Credits
+
+Forked from [gazebo_terrain_generator](https://github.com/saiaravind19/gazebo_terrain_generator) by saiaravind19.
+
 ## Reference
-- [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo
-)
-- [Mapbox Dem](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/)
+- [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo)
+- [Mapbox DEM](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/)
