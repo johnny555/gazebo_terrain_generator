@@ -413,6 +413,7 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
                   placeholder="Enter a location"
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 />
+                <p className="text-xs text-gray-400 mt-1">Type a place name and press Enter to fly there.</p>
               </form>
             </div>
 
@@ -423,7 +424,7 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
                 <span className="font-semibold">Select Region</span>
               </div>
               <div className="ml-9 space-y-3">
-                <p className="text-xs text-gray-500">Click the map to place the region center, then adjust the size below.</p>
+                <p className="text-xs text-gray-500">Click the map to place the region center. The region snaps to the tile grid. Adjust size below.</p>
                 <div>
                   <label className="text-xs text-gray-500">Region Size (tiles per side)</label>
                   <input
@@ -440,6 +441,12 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
                     <span>16</span>
                   </div>
                 </div>
+                {regionPlaced && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+                    <strong>Spawn Point:</strong> Drag the red <span className="inline-block w-4 h-4 bg-red-500 rounded-full text-white text-[8px] text-center leading-4 align-middle">H</span> marker
+                    to set where robots will spawn in Gazebo. This sets the world origin (0, 0, 0) for the simulation.
+                  </div>
+                )}
                 {tileInfo && (
                   <div className="text-xs text-cyan-600 font-medium">{tileInfo}</div>
                 )}
@@ -464,6 +471,7 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
                     max={20}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
+                  <p className="text-xs text-gray-400 mt-1">Higher = more detail, more tiles. 17 is good for most areas.</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Tile Source</label>

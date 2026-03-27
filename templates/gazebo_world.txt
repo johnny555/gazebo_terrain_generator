@@ -38,10 +38,6 @@
       <uri>model://$MODELNAME$</uri>
     </include>
 
-    <include>
-      <uri>$HELIPAD$</uri>
-    </include>
-
 $MODEL_INCLUDES$
 
   </world>

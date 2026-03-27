@@ -31,6 +31,15 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
         ])
         if (terrainResult.code === 200) {
           setTerrainInfo(terrainResult.terrain)
+          // Add helipad at origin for fresh worlds (not loading existing)
+          if (initialModels.length === 0) {
+            setPlacedModels([{
+              name: 'helipad',
+              x: 0, y: 0, z: 0,
+              roll: 0, pitch: 0, yaw: 0,
+              bounds: null,
+            }])
+          }
         } else {
           setError('Failed to load terrain info: ' + (terrainResult.error || 'unknown'))
         }

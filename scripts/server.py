@@ -634,8 +634,8 @@ def load_terrain(name):
                 if uri_el is None or not uri_el.text:
                     continue
                 uri = uri_el.text.strip()
-                # Skip the terrain model itself and helipad
-                if uri == f'model://{name}' or 'helipad' in uri:
+                # Skip the terrain model itself
+                if uri == f'model://{name}':
                     continue
                 # Extract model name from uri
                 model_name_from_uri = uri
@@ -753,19 +753,12 @@ def generate_world():
     template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH, 'gazebo_world.txt'))
     launch = info['launch_location']
 
-    helipad_exist = os.path.exists(os.path.join(globalParam.GAZEBO_MODEL_PATH, 'helipad'))
-
     # Do template replacements
     template = template.replace("$MODELNAME$", model_name)
     template = template.replace("$ORIGIN_LAT$", str(launch["latitude"]))
     template = template.replace("$ORIGIN_LONG$", str(launch["longitude"]))
     template = template.replace("$ORIGIN_ELEVATION$", str(launch["altitude"]))
     template = template.replace("$MODEL_INCLUDES$", model_includes)
-
-    if helipad_exist:
-        template = template.replace("$HELIPAD$", "model://helipad")
-    else:
-        template = template.replace("$HELIPAD$", globalParam.HELIPAD_MODEL)
 
     # Write world files
     world_path_model = os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name, model_name + ".sdf")
@@ -857,6 +850,88 @@ def launch_gazebo():
         return jsonify({"code": 500, "error": "gz command not found. Is Gazebo Sim installed?"}), 500
     except Exception as e:
         return jsonify({"code": 500, "error": str(e)}), 500
+
+
+@app.route('/api/export-targets', methods=['GET'])
+def export_targets():
+    """List candidate export directories (worlds/ and models/ folders in workspace)."""
+    project_root = str(Path(__file__).resolve().parents[1])
+    workspace_src = str(Path(project_root).parent)
+
+    targets = []
+    if os.path.isdir(workspace_src):
+        for entry in sorted(os.listdir(workspace_src)):
+            entry_path = os.path.join(workspace_src, entry)
+            if not os.path.isdir(entry_path) or entry.startswith('.'):
+                continue
+            # Look for 'worlds' subdirectories up to 3 levels deep
+            for root_dir, subdirs, files in os.walk(entry_path):
+                depth = root_dir[len(entry_path):].count(os.sep)
+                if depth > 2:
+                    subdirs.clear()
+                    continue
+                basename = os.path.basename(root_dir)
+                if basename == 'worlds':
+                    has_sdf = any(f.endswith('.sdf') for f in files)
+                    targets.append({
+                        "path": root_dir,
+                        "label": os.path.relpath(root_dir, workspace_src),
+                        "type": "worlds",
+                        "has_existing": has_sdf,
+                    })
+                elif basename == 'models':
+                    targets.append({
+                        "path": root_dir,
+                        "label": os.path.relpath(root_dir, workspace_src),
+                        "type": "models",
+                    })
+
+    return jsonify({"code": 200, "targets": targets, "workspace": workspace_src})
+
+
+@app.route('/api/export', methods=['POST'])
+def export_world():
+    """Export the world SDF and terrain model to a target directory."""
+    global current_model_name
+    if not current_model_name or current_model_name not in terrain_info_store:
+        return jsonify({"code": 404, "error": "No terrain loaded"}), 404
+
+    data = request.get_json()
+    worlds_dir = data.get('worlds_dir', '').strip()
+    models_dir = data.get('models_dir', '').strip()
+
+    if not worlds_dir:
+        return jsonify({"code": 400, "error": "worlds_dir is required"}), 400
+
+    info = terrain_info_store[current_model_name]
+    model_name = info['model_name']
+
+    import shutil
+    exported = []
+
+    # Export world SDF to worlds directory
+    world_src = os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name, model_name + '.sdf')
+    if os.path.isfile(world_src):
+        os.makedirs(worlds_dir, exist_ok=True)
+        world_dst = os.path.join(worlds_dir, model_name + '.sdf')
+        shutil.copy2(world_src, world_dst)
+        exported.append(f"World SDF → {world_dst}")
+
+    # Export terrain model to models directory (if provided)
+    if models_dir:
+        model_src_dir = os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name)
+        model_dst_dir = os.path.join(models_dir, model_name)
+        if os.path.isdir(model_src_dir):
+            if os.path.exists(model_dst_dir):
+                shutil.rmtree(model_dst_dir)
+            shutil.copytree(model_src_dir, model_dst_dir)
+            exported.append(f"Terrain model → {model_dst_dir}")
+
+    return jsonify({
+        "code": 200,
+        "message": f"Exported {len(exported)} items",
+        "exported": exported,
+    })
 
 
 # ─── Static file serving ──────────────────────────────────────────────────────

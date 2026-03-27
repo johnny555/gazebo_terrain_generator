@@ -98,6 +98,20 @@ export async function launchGazebo() {
   return res.json();
 }
 
+export async function getExportTargets() {
+  const res = await fetch(`${API_BASE}/api/export-targets`);
+  return res.json();
+}
+
+export async function exportWorld(worldsDir, modelsDir) {
+  const res = await fetch(`${API_BASE}/api/export`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ worlds_dir: worldsDir, models_dir: modelsDir }),
+  });
+  return res.json();
+}
+
 export async function browseDirs() {
   const res = await fetch(`${API_BASE}/api/browse-dirs`);
   return res.json();
