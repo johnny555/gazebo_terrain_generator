@@ -42,8 +42,7 @@ else
 fi
 
 echo "Installing Python dependencies..."
-source venv/bin/activate
-pip install -q -r requirements.txt
+venv/bin/pip install -q -r requirements.txt
 
 # Install and build frontend
 echo "Installing frontend dependencies..."
