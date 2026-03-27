@@ -35,36 +35,50 @@ cd gazebo_world_builder
 git checkout world-builder
 ```
 
-### 2. Create and activate a Python virtual environment
-
-A virtual environment is **required** on most modern Linux distributions (Ubuntu 23.04+, etc.)
-due to [PEP 668](https://peps.python.org/pep-0668/) which prevents installing packages into the
-system Python. You'll get an `externally-managed-environment` error without one.
+### 2. Quick Install
 
 ```bash
+./install.sh
+```
+
+This creates a Python virtual environment, installs all Python and Node.js dependencies,
+and builds the frontend. Requires Python 3.10+ and Node.js 18+.
+
+### 3. Start
+
+```bash
+./start.sh
+```
+
+Opens the app at [http://localhost:5000](http://localhost:5000).
+
+### Manual Install (if you prefer)
+
+<details>
+<summary>Click to expand manual steps</summary>
+
+```bash
+# Create Python venv (required on Ubuntu 23.04+ due to PEP 668)
 python3 -m venv venv
 source venv/bin/activate
-```
 
-> **Note:** You'll need to run `source venv/bin/activate` each time you open a new terminal
-> before starting the server.
-
-### 3. Install Python dependencies
-
-```bash
+# Install Python dependencies
 pip install -r requirements.txt
-```
 
-### 4. Build the frontend
-
-Requires [Node.js 18+](https://nodejs.org/) and npm.
-
-```bash
+# Build frontend (requires Node.js 18+)
 cd frontend
 npm install
 npm run build
 cd ..
+
+# Start the server
+cd scripts
+python server.py
 ```
+
+> **Note:** Run `source venv/bin/activate` each time you open a new terminal.
+
+</details>
 
 ### 5. (Optional) Create a `.env.local` file
 
