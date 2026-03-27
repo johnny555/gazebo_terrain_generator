@@ -834,12 +834,24 @@ def launch_gazebo():
     new_paths = ':'.join(sorted(resource_paths))
     env['GZ_SIM_RESOURCE_PATH'] = new_paths + (':' + existing if existing else '')
 
+    # Remove venv paths that inject OpenCV's Qt plugins, which conflict with Gazebo's Qt
+    env.pop('QT_PLUGIN_PATH', None)
+    env.pop('QT_QPA_PLATFORM_PLUGIN_PATH', None)
+    venv_prefix = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'venv')
+    if 'LD_LIBRARY_PATH' in env:
+        env['LD_LIBRARY_PATH'] = ':'.join(
+            p for p in env['LD_LIBRARY_PATH'].split(':') if venv_prefix not in p
+        )
+
     try:
+        log_path = os.path.join(globalParam.GAZEBO_MODEL_PATH, 'gazebo_launch.log')
+        log_file = open(log_path, 'w')
         proc = subprocess.Popen(
             ['gz', 'sim', world_file],
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=log_file,
+            start_new_session=True,
         )
         return jsonify({
             "code": 200,
