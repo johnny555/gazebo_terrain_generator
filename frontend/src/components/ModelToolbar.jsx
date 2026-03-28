@@ -21,7 +21,7 @@ export default function ModelToolbar({ activeModelName, onSelectModel, onModelsL
           if (onModelsLoaded) onModelsLoaded(result.models)
         }
       })
-      .catch(() => {})
+      .catch((err) => console.warn('API call failed:', err))
       .finally(() => setLoading(false))
   }, [onModelsLoaded])
 
@@ -30,7 +30,7 @@ export default function ModelToolbar({ activeModelName, onSelectModel, onModelsL
       if (result.code === 200) {
         setConfiguredPaths(result.configured)
       }
-    }).catch(() => {})
+    }).catch((err) => console.warn('API call failed:', err))
   }, [])
 
   // On mount: auto-add all detected paths, then load models
@@ -40,12 +40,12 @@ export default function ModelToolbar({ activeModelName, onSelectModel, onModelsL
 
     const init = async () => {
       // Get current state
-      const pathsResult = await getModelPaths().catch(() => null)
+      const pathsResult = await getModelPaths().catch((err) => { console.warn('Failed to load model paths:', err); return null })
       const configured = pathsResult?.configured || []
       const detected = pathsResult?.detected || []
 
       // Get workspace directories
-      const browseResult = await browseDirs().catch(() => null)
+      const browseResult = await browseDirs().catch((err) => { console.warn('Failed to browse dirs:', err); return null })
       const workspaceDirs = browseResult?.directories || []
       setBrowsedDirs(workspaceDirs)
 
@@ -59,7 +59,7 @@ export default function ModelToolbar({ activeModelName, onSelectModel, onModelsL
       }
 
       for (const p of toAdd) {
-        await updateModelPath(p, 'add').catch(() => {})
+        await updateModelPath(p, 'add').catch((err) => console.warn('API call failed:', err))
       }
 
       // Now load the final state

@@ -305,8 +305,11 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
 
     try {
       await startDownload(startData)
-    } catch {
+    } catch (err) {
       if (signal.aborted) return
+      addLog(`Failed to start download: ${err.message}`)
+      setGenerationStatus('failed')
+      return
     }
 
     if (signal.aborted) return
@@ -340,9 +343,9 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
         completed++
         setProgress({ current: completed, total: tiles.length })
         addLog(`${tile.x},${tile.y},${tile.z} : ${result.message}`)
-      } catch {
+      } catch (err) {
         if (signal.aborted) return
-        addLog(`${tile.x},${tile.y},${tile.z} : Error`)
+        addLog(`${tile.x},${tile.y},${tile.z} : Error - ${err.message}`)
       }
     }
 

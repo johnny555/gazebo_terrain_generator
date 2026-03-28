@@ -19,7 +19,7 @@ export default function ExportPage({ generateResult, onBack, onBackToHome }) {
       if (result.code === 200) {
         setTargets(result.targets)
       }
-    }).catch(() => {})
+    }).catch((err) => console.warn('Failed to load export targets:', err))
   }, [])
 
   const worldsTargets = targets.filter(t => t.type === 'worlds')

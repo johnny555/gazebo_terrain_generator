@@ -83,22 +83,23 @@ def _build_model_descriptor(dir_name, model_dir, config_path):
         config_info = parse_model_config(config_path)
         model['display_name'] = config_info.get('name', dir_name)
         model['description'] = config_info.get('description', '')
-    except Exception:
-        pass
+    except (ET.ParseError, OSError) as e:
+        print(f"Warning: Failed to parse model config {config_path}: {e}")
 
     # Find mesh references from model.sdf
     sdf_path = os.path.join(model_dir, 'model.sdf')
     if os.path.isfile(sdf_path):
         try:
             model['meshes'] = find_mesh_references(sdf_path, model_dir)
-        except Exception:
-            pass
+        except (ET.ParseError, OSError) as e:
+            print(f"Warning: Failed to parse mesh references from {sdf_path}: {e}")
 
     # Extract collision bounds for extent visualization
     if os.path.isfile(sdf_path):
         try:
             model['bounds'] = extract_model_bounds(sdf_path)
-        except Exception:
+        except (ET.ParseError, OSError) as e:
+            print(f"Warning: Failed to extract bounds from {sdf_path}: {e}")
             model['bounds'] = None
     else:
         model['bounds'] = None
@@ -230,7 +231,8 @@ def extract_model_bounds(sdf_path):
     try:
         tree = ET.parse(sdf_path)
         root = tree.getroot()
-    except Exception:
+    except (ET.ParseError, OSError) as e:
+        print(f"Warning: Failed to parse SDF {sdf_path}: {e}")
         return None
 
     min_coords = [float('inf')] * 3

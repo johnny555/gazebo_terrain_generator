@@ -21,7 +21,7 @@ def fetch_image_from_url(url : str):
         if img is None:
             raise ValueError("Failed to decode image from URL.")
         return img
-    except Exception as e:
+    except (OSError, ValueError) as e:
         print(f"Failed to download or decode image from {url}: {e}")
         return None
 
@@ -98,5 +98,5 @@ def download_dem_data(bound_array, output_directory, zoom_range: tuple = (global
         with Pool(processes=cpu_count()) as pool:  # You can tune the number here
             pool.map(download_tile_image, tasks)
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         print(f"Download failed: {e}")

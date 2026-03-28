@@ -120,7 +120,8 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
           setSelectedIndex(prev.length)
           return [...prev, newModel]
         })
-      }).catch(() => {
+      }).catch((err) => {
+        console.warn('Failed to query elevation on place:', err)
         const newModel = {
           name: activeModelName,
           x: Math.round(world.x * 100) / 100,
@@ -194,7 +195,7 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
               return updated
             })
           }
-        }).catch(() => {})
+        }).catch((err) => console.warn('Failed to query elevation after drag:', err))
       }
     }
     setIsPanning(false)

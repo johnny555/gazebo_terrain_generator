@@ -664,8 +664,8 @@ def load_terrain(name):
                     "pitch": pose[4],
                     "yaw": -pose[5],  # Negate: SDF CCW -> UI CW
                 })
-        except Exception:
-            pass
+        except (ET.ParseError, OSError) as e:
+            print(f"Warning: Failed to parse placed models from {world_sdf}: {e}")
 
     return jsonify({
         "code": 200,

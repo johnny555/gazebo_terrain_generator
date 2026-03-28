@@ -15,7 +15,7 @@ export default function HomePage({ mapboxKey: initialKey, onCreateNew, onLoadExi
       .then(result => {
         if (result.code === 200) setTerrains(result.terrains)
       })
-      .catch(() => {})
+      .catch((err) => console.warn('Failed to list terrains:', err))
       .finally(() => setLoading(false))
   }, [])
 
