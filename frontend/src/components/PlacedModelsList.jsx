@@ -75,23 +75,6 @@ export default function PlacedModelsList({ models, selectedIndex, onSelect, onDe
                         />
                       </div>
                     </div>
-                    {/* Quick roll presets for models that need uprighting */}
-                    <div className="flex gap-1">
-                      <span className="text-gray-400 self-center">Roll:</span>
-                      {[0, 90, -90, 180].map(deg => (
-                        <button
-                          key={deg}
-                          onClick={() => onUpdate(idx, { roll: toRad(deg) })}
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            toDeg(model.roll) === deg
-                              ? 'bg-cyan-500 text-white'
-                              : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
-                          }`}
-                        >
-                          {deg}°
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>

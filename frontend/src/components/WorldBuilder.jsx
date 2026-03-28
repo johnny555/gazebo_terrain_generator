@@ -181,10 +181,26 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
   }, [isPanning, isRotating, isDraggingModel, selectedIndex, terrainInfo, imageSize, transform])
 
   const handleMouseUp = useCallback(() => {
+    if (isDraggingModel && selectedIndex >= 0) {
+      const model = placedModels[selectedIndex]
+      if (model) {
+        getHeightmapElevation(model.x, model.y).then(result => {
+          if (result.code === 200) {
+            setPlacedModels(prev => {
+              const updated = [...prev]
+              if (updated[selectedIndex]) {
+                updated[selectedIndex] = { ...updated[selectedIndex], z: Math.round(result.z * 100) / 100 }
+              }
+              return updated
+            })
+          }
+        }).catch(() => {})
+      }
+    }
     setIsPanning(false)
     setIsRotating(false)
     setIsDraggingModel(false)
-  }, [])
+  }, [isDraggingModel, selectedIndex, placedModels])
 
   // Wheel zoom - attach directly to container div
   useEffect(() => {
@@ -232,19 +248,6 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
       return updated
     })
   }, [])
-
-  const handleSnapToTerrain = async () => {
-    const updated = [...placedModels]
-    for (let i = 0; i < updated.length; i++) {
-      try {
-        const result = await getHeightmapElevation(updated[i].x, updated[i].y)
-        if (result.code === 200) {
-          updated[i] = { ...updated[i], z: Math.round(result.z * 100) / 100 }
-        }
-      } catch {}
-    }
-    setPlacedModels(updated)
-  }
 
   const handleGenerateSDF = async () => {
     setGenerating(true)
@@ -503,19 +506,13 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
         {/* Bottom bar */}
         <div className="absolute bottom-4 left-4 right-4 z-10 flex items-center justify-between">
           <button
-            onClick={onBack}
+            onClick={() => {
+              if (placedModels.length > 0 && !window.confirm('You have placed models. Leave without generating?')) return
+              onBack()
+            }}
             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 text-sm"
           >
             Back
-          </button>
-
-          <button
-            onClick={handleSnapToTerrain}
-            disabled={placedModels.length === 0}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-sm"
-            title="Re-compute Z height for all models from the terrain heightmap"
-          >
-            Snap to Terrain
           </button>
 
           <div className="flex items-center gap-3">
@@ -542,15 +539,6 @@ export default function WorldBuilder({ onBack, onExport, initialModels = [] }) {
           onDelete={handleDelete}
           onUpdate={handleUpdateModel}
         />
-        {selectedIndex >= 0 && selectedIndex < placedModels.length && (
-          <div className="p-3 border-t">
-            <div className="text-xs text-gray-500">
-              Yaw: {Math.round(placedModels[selectedIndex].yaw * 180 / Math.PI)}°
-              <span className="text-gray-400 ml-1">(drag yellow handle to rotate)</span>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   )

@@ -196,7 +196,7 @@ export default function ExportPage({ generateResult, onBack, onBackToHome }) {
         <div className="flex gap-3">
           <button
             onClick={onBack}
-            className="flex-1 py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600"
+            className="flex-1 py-3 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700"
           >
             Back to Editor
           </button>

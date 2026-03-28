@@ -71,10 +71,6 @@ export function getTerrainImageUrl() {
   return `${API_BASE}/api/terrain-image?t=${Date.now()}`;
 }
 
-export function getMeshUrl(modelName, meshPath) {
-  return `${API_BASE}/api/models/${modelName}/mesh/${meshPath}`;
-}
-
 export function getThumbnailUrl(modelName) {
   return `${API_BASE}/api/models/${modelName}/thumbnail`;
 }

@@ -71,14 +71,13 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
   const [tileSize, setTileSize] = useState(4)
   const [source, setSource] = useState(Object.values(TILE_SOURCES)[0])
   const [modelName, setModelName] = useState(initialModelName || '')
-  const [threads, setThreads] = useState(4)
+  const abortRef = useRef(null)
   const [regionPlaced, setRegionPlaced] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [logs, setLogs] = useState([])
   const [generationStatus, setGenerationStatus] = useState('')
-  const [searchQuery, setSearchQuery] = useState('UK')
-  const [tileInfo, setTileInfo] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const regionRef = useRef(null) // { bounds, center }
   const launchLocationRef = useRef(null)
@@ -175,7 +174,6 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
 
     updateRegionOverlay(region.bounds)
     setRegionPlaced(true)
-    setTileInfo(`${region.tileCount} tiles (${tileSize}x${tileSize})`)
 
     // Update or create launch marker
     const map = mapRef.current
@@ -246,8 +244,21 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
       })
   }
 
+  const handleCancel = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+    setDownloading(false)
+    setGenerationStatus('')
+  }, [])
+
   const handleGenerate = async () => {
     if (!regionRef.current) return
+
+    const controller = new AbortController()
+    abortRef.current = controller
+    const signal = controller.signal
 
     const name = modelName || Date.now().toString()
     setDownloading(true)
@@ -292,13 +303,19 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
     startData.append('launchLocation', launchLocation.join(','))
     startData.append('area', '0')
 
-    await startDownload(startData)
+    try {
+      await startDownload(startData)
+    } catch {
+      if (signal.aborted) return
+    }
+
+    if (signal.aborted) return
 
     let completed = 0
-    const concurrency = threads
+    const concurrency = 4
 
     const downloadNext = async (index) => {
-      if (index >= tiles.length) return
+      if (index >= tiles.length || signal.aborted) return
       const tile = tiles[index]
 
       const data = new FormData()
@@ -319,22 +336,26 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
 
       try {
         const result = await downloadTile(data)
+        if (signal.aborted) return
         completed++
         setProgress({ current: completed, total: tiles.length })
         addLog(`${tile.x},${tile.y},${tile.z} : ${result.message}`)
       } catch {
+        if (signal.aborted) return
         addLog(`${tile.x},${tile.y},${tile.z} : Error`)
       }
     }
 
     const queue = [...Array(tiles.length).keys()]
     const workers = Array(Math.min(concurrency, tiles.length)).fill(null).map(async () => {
-      while (queue.length > 0) {
+      while (queue.length > 0 && !signal.aborted) {
         const idx = queue.shift()
         if (idx !== undefined) await downloadNext(idx)
       }
     })
     await Promise.all(workers)
+
+    if (signal.aborted) return
 
     addLog('Starting world generation...')
     setGenerationStatus('generating')
@@ -349,8 +370,10 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
     await endDownload(endData)
 
     const poll = async () => {
+      if (signal.aborted) return
       try {
         const status = await getTaskStatus()
+        if (signal.aborted) return
         if (status.message?.status === 'completed') {
           addLog('Terrain generation complete!')
           setGenerationStatus('completed')
@@ -362,6 +385,7 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
           setTimeout(poll, 3000)
         }
       } catch {
+        if (signal.aborted) return
         setTimeout(poll, 3000)
       }
     }
@@ -447,9 +471,6 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
                     to set where robots will spawn in Gazebo. This sets the world origin (0, 0, 0) for the simulation.
                   </div>
                 )}
-                {tileInfo && (
-                  <div className="text-xs text-cyan-600 font-medium">{tileInfo}</div>
-                )}
               </div>
             </div>
 
@@ -488,32 +509,6 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
               </div>
             </div>
 
-            {/* Step 4: Output */}
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-7 h-7 bg-cyan-500 rounded-full text-white text-sm font-bold flex items-center justify-center">4</span>
-                <span className="font-semibold">Settings</span>
-              </div>
-              <div className="ml-9 space-y-3">
-                {modelName && (
-                  <div className="text-xs text-gray-500">
-                    World name: <span className="font-medium text-gray-700">{modelName}</span>
-                  </div>
-                )}
-                <div>
-                  <label className="text-xs text-gray-500">Parallel Downloads</label>
-                  <input
-                    type="number"
-                    value={threads}
-                    onChange={(e) => setThreads(parseInt(e.target.value) || 4)}
-                    min={1}
-                    max={16}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Generate button */}
             <div className="mt-auto">
               <button
@@ -529,7 +524,7 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
           <>
             {/* Download progress */}
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-7 h-7 bg-cyan-500 rounded-full text-white text-sm font-bold flex items-center justify-center">5</span>
+              <span className="w-7 h-7 bg-cyan-500 rounded-full text-white text-sm font-bold flex items-center justify-center">4</span>
               <span className="font-semibold">Generating World</span>
             </div>
 
@@ -571,14 +566,14 @@ export default function MapSelector({ mapboxKey, modelName: initialModelName, on
               </button>
             ) : generationStatus === 'failed' ? (
               <button
-                onClick={() => setDownloading(false)}
+                onClick={handleCancel}
                 className="w-full py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600"
               >
                 Back
               </button>
             ) : (
               <button
-                onClick={() => setDownloading(false)}
+                onClick={handleCancel}
                 className="w-full py-3 bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200"
               >
                 Cancel
