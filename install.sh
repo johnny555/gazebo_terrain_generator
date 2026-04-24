@@ -41,6 +41,13 @@ else
     echo "Python venv already exists."
 fi
 
+# Hide the venv from colcon. Without this marker, a workspace-level
+# `colcon build` descends into venv/lib/.../numpy/_core/tests/examples/
+# and tries to parse numpy's Cython test stubs as ROS packages, which
+# fails with ModuleNotFoundError: No module named 'Cython' and spams the
+# build output with tracebacks.
+touch venv/COLCON_IGNORE
+
 echo "Installing Python dependencies..."
 venv/bin/pip install -q -r requirements.txt
 
